@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import SlideNavigator from '@/components/slides/SlideNavigator';
+import { createExcelService } from '@/lib/excel';
 
 export default function Home() {
   const [completionData, setCompletionData] = useState<Record<
@@ -18,9 +19,32 @@ export default function Home() {
     console.log('Slide flow completed with data:', data);
   };
 
-  const handleSpreadsheetUpdate = (data: { serviceName?: string; exists: boolean }) => {
+  const handleSpreadsheetUpdate = async (data: { serviceName?: string; exists: boolean }) => {
     setSpreadsheetData(data);
     console.log('Spreadsheet update requested:', data);
+
+    // Write to Excel
+    try {
+      const excelService = createExcelService();
+      await excelService.writeToExcel({
+        serviceName: data.serviceName,
+        exists: data.exists,
+        timestamp: new Date().toISOString(),
+      });
+      console.log('Successfully updated Excel file');
+    } catch (error) {
+      console.error('Failed to update Excel file:', error);
+    }
+  };
+
+  const handleDownloadExcel = async () => {
+    try {
+      const excelService = createExcelService();
+      const data = await excelService.readExcel();
+      await excelService.downloadExcel(data);
+    } catch (error) {
+      console.error('Failed to download Excel file:', error);
+    }
   };
 
   const resetFlow = () => {
@@ -57,12 +81,20 @@ export default function Home() {
                 ))}
               </ul>
             </div>
-            <button
-              onClick={resetFlow}
-              className="px-6 py-3 bg-gray-900 text-white rounded-2xl font-medium transition-all duration-300 hover:scale-105 hover:shadow-lg"
-            >
-              Start New Flow
-            </button>
+            <div className="flex gap-4">
+              <button
+                onClick={handleDownloadExcel}
+                className="flex-1 px-6 py-3 bg-gray-900 text-white rounded-2xl font-medium transition-all duration-300 hover:scale-105 hover:shadow-lg"
+              >
+                Download Updated Excel
+              </button>
+              <button
+                onClick={resetFlow}
+                className="px-6 py-3 bg-gray-50 hover:bg-gray-100 border border-gray-200 hover:border-gray-300 text-gray-900 rounded-2xl font-medium transition-all duration-300 hover:scale-105"
+              >
+                Start New Flow
+              </button>
+            </div>
           </div>
         )}
 
