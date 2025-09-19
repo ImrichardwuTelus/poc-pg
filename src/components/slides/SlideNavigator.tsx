@@ -6,6 +6,7 @@ import { PagerDutyService } from '@/types/pagerduty';
 import { slides } from '@/data/slides';
 import SlideComponent from './SlideComponent';
 import ServiceSelector from './ServiceSelector';
+import TimelineProgress from './TimelineProgress';
 
 interface SlideNavigatorProps {
   initialSlide?: string;
@@ -27,6 +28,42 @@ export default function SlideNavigator({
   const [showServiceNameInput, setShowServiceNameInput] = useState(false);
   const [showServiceSelector, setShowServiceSelector] = useState(false);
   const [serviceName, setServiceName] = useState('');
+
+  // Helper function to get completed slides
+  const getCompletedSlides = () => {
+    const completed: string[] = [];
+
+    // Add slides that have been completed based on navigation history
+    navigationState.history.forEach(slideId => {
+      if (!completed.includes(slideId)) {
+        completed.push(slideId);
+      }
+    });
+
+    return completed;
+  };
+
+  // Helper function to get current slide ID for timeline
+  const getCurrentSlideForTimeline = () => {
+    if (showServiceSelector) return 'serviceSelection';
+    if (showServiceNameInput) return 'spreadsheetUpdate';
+    return navigationState.currentSlide;
+  };
+
+  // Helper function to get user responses for timeline
+  const getUserResponses = () => {
+    const responses: Record<string, string | boolean | number> = {};
+
+    // Convert navigation data to timeline format
+    Object.entries(navigationState.data).forEach(([key, value]) => {
+      if (key.endsWith('_response')) {
+        const slideId = key.replace('_response', '');
+        responses[slideId] = value;
+      }
+    });
+
+    return responses;
+  };
 
   const handleOptionSelect = (option: SlideOption) => {
     const currentSlide = slides[navigationState.currentSlide];
@@ -125,54 +162,77 @@ export default function SlideNavigator({
 
   if (showServiceSelector) {
     return (
-      <ServiceSelector
-        onServiceSelect={handleServiceSelect}
-        onCancel={handleServiceSelectorCancel}
-      />
+      <div className="space-y-6">
+        {/* Timeline Progress - Top */}
+        <TimelineProgress
+          currentSlideId="serviceSelection"
+          completedSlides={getCompletedSlides()}
+          userResponses={getUserResponses()}
+        />
+
+        {/* Service Selector */}
+        <ServiceSelector
+          onServiceSelect={handleServiceSelect}
+          onCancel={handleServiceSelectorCancel}
+        />
+      </div>
     );
   }
 
   if (showServiceNameInput) {
     return (
-      <div className="max-w-2xl mx-auto p-10 bg-white backdrop-blur-xl border border-gray-200 rounded-3xl shadow-2xl shadow-gray-900/10">
-        <h1 className="text-4xl font-light text-gray-900 mb-8 tracking-tight">
-          Service Information
-        </h1>
+      <div className="space-y-6">
+        {/* Timeline Progress - Top */}
+        <TimelineProgress
+          currentSlideId="spreadsheetUpdate"
+          completedSlides={getCompletedSlides()}
+          userResponses={getUserResponses()}
+        />
 
-        <div className="mb-8">
-          <p className="text-xl text-gray-600 mb-6 font-light leading-relaxed">
-            The technical service does not exist in PagerDuty. Please provide the technical service
-            name to update the spreadsheet.
-          </p>
+        {/* Service Name Input */}
+        <div className="max-w-2xl mx-auto p-10 bg-white backdrop-blur-xl border border-gray-200 rounded-3xl shadow-2xl shadow-gray-900/10">
+          <h1 className="text-4xl font-light text-gray-900 mb-8 tracking-tight">
+            Service Information
+          </h1>
 
-          <div className="mb-6">
-            <label htmlFor="serviceName" className="block text-base font-medium text-gray-900 mb-3">
-              Technical Service Name (optional):
-            </label>
-            <input
-              type="text"
-              id="serviceName"
-              value={serviceName}
-              onChange={e => setServiceName(e.target.value)}
-              className="w-full p-4 bg-gray-50 backdrop-blur-sm border border-gray-200 rounded-2xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900/20 focus:border-gray-300 transition-all duration-300 font-light"
-              placeholder="Enter service name..."
-            />
+          <div className="mb-8">
+            <p className="text-xl text-gray-600 mb-6 font-light leading-relaxed">
+              The technical service does not exist in PagerDuty. Please provide the technical
+              service name to update the spreadsheet.
+            </p>
+
+            <div className="mb-6">
+              <label
+                htmlFor="serviceName"
+                className="block text-base font-medium text-gray-900 mb-3"
+              >
+                Technical Service Name (optional):
+              </label>
+              <input
+                type="text"
+                id="serviceName"
+                value={serviceName}
+                onChange={e => setServiceName(e.target.value)}
+                className="w-full p-4 bg-gray-50 backdrop-blur-sm border border-gray-200 rounded-2xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900/20 focus:border-gray-300 transition-all duration-300 font-light"
+                placeholder="Enter service name..."
+              />
+            </div>
           </div>
-        </div>
 
-        <div className="flex gap-4">
-          <button
-            onClick={handleServiceNameSubmit}
-            className="flex-1 p-4 bg-gray-900 text-white rounded-2xl font-medium transition-all duration-300 hover:scale-105 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-gray-900/20 focus:ring-offset-2"
-          >
-            Update Spreadsheet
-          </button>
-          <button
-            onClick={() => setShowServiceNameInput(false)}
-            className="px-6 py-4 bg-gray-50 hover:bg-gray-100 backdrop-blur-sm border border-gray-200 hover:border-gray-300 text-gray-900 rounded-2xl font-medium transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-gray-900/20 focus:ring-offset-2 hover:scale-105"
-          >
-            Cancel
-          </button>
+          <div className="flex gap-4">
+            <button
+              onClick={handleServiceNameSubmit}
+              className="flex-1 p-4 bg-gray-900 text-white rounded-2xl font-medium transition-all duration-300 hover:scale-105 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-gray-900/20 focus:ring-offset-2"
+            >
+              Update Spreadsheet
+            </button>
+            <button
+              onClick={() => setShowServiceNameInput(false)}
+              className="px-6 py-4 bg-gray-50 hover:bg-gray-100 backdrop-blur-sm border border-gray-200 hover:border-gray-300 text-gray-900 rounded-2xl font-medium transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-gray-900/20 focus:ring-offset-2 hover:scale-105"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -180,6 +240,14 @@ export default function SlideNavigator({
 
   return (
     <div className="space-y-6">
+      {/* Timeline Progress - Top */}
+      <TimelineProgress
+        currentSlideId={getCurrentSlideForTimeline()}
+        completedSlides={getCompletedSlides()}
+        userResponses={getUserResponses()}
+      />
+
+      {/* Main Content */}
       <SlideComponent slide={currentSlide} onOptionSelect={handleOptionSelect} />
 
       {navigationState.history.length > 0 && (
